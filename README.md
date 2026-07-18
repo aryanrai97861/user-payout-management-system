@@ -10,10 +10,11 @@ A comprehensive Low-Level Design (LLD) and full-stack implementation for managin
 - **Authentication**: Custom JWT with Role-Based Access Control (Admin/User)
 
 ## Business Logic Implemented
-1. **Instant Advance Payout**: When a user records a sale, they instantly receive a 10% advance payout credited to their balance.
+1. **Instant Advance Payout**: When a user records a sale (tracking productName, customerName, and brand), they instantly receive a 10% advance payout credited to their balance.
 2. **Reconciliation (Approval)**: An administrator can approve a sale. The remaining 90% of the sale amount is then credited to the user's balance.
 3. **Reconciliation (Rejection)**: An administrator can reject a sale. Since the user already received a 10% advance, this amount is deducted from their balance (resulting in a negative balance if they have no other funds).
-4. **Withdrawal Limits**: Users can only withdraw funds once every 24 hours (a bypass button is included for testing).
+4. **Withdrawal Limits & Timers**: Users can only withdraw funds once every 24 hours. A live timer enforces this limit on the frontend.
+5. **Failed Payout Recovery**: All withdrawals are initially marked as `PENDING`. If an admin manually marks a withdrawal as `FAILED` or `CANCELLED`, the system instantly refunds the user's balance and completely resets their 24-hour lock timer so they can attempt another withdrawal immediately.
 
 ## Setup & Testing
 Please see the [TESTING_GUIDE.md](./TESTING_GUIDE.md) for a detailed, step-by-step tutorial on how to manually test all mathematical flows and edge cases.

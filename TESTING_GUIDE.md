@@ -14,7 +14,7 @@ Follow this guide to manually test the mathematical flows and Role-Based Access 
 3. You will be redirected to your User Dashboard. Notice your **Available Balance** is exactly `$0.00`.
 
 ## 3. Testing the Instant Advance (10%)
-1. In the **New Sale** form, enter a Product Name (e.g., "Pro Subscription"), Customer Name, and an Amount of **$100.00**.
+1. In the **New Sale** form, enter a Product Name, Customer Name, Brand (e.g., `brand_1`), and an Amount of **$100.00**.
 2. Click **Record Sale**.
 3. **Observe**: 
    - Your Available Balance instantly jumps to **$10.00** (10% of $100).
@@ -44,3 +44,19 @@ Follow this guide to manually test the mathematical flows and Role-Based Access 
    - Under the rejected sale in **Your Sales**, a red warning explicitly states: *"Sale rejected! A -10% deduction was explicitly applied to your balance to recover the advance."*
    - In the **Transactions** list, a red `ADJUSTMENT` of `-$5.00` is recorded for "Advance recovery charge".
    *(Note: If your balance was $0 prior to the deduction, your balance will correctly show as negative, e.g., `-$5.00`)*.
+
+## 6. Testing Failed Payout Recovery (Withdrawals)
+1. Still logged in as the User, request a withdrawal of **$20.00** in the Request Withdrawal section.
+2. **Observe**:
+   - Your Available Balance drops to **$80.00**.
+   - The Withdraw Funds button turns into a **Locked (23h 59m 59s)** timer. (Clicking it will show a warning popup).
+   - In the Transactions list, you see a `WITHDRAWAL` of `-$20.00` with a yellow `PENDING` badge.
+3. Log out and log back in as the Admin (`admin@payoutflow.com`).
+4. Scroll down to the **Withdrawal Requests** section. You will see the user's $20.00 pending withdrawal.
+5. Click the red **Fail** button next to the withdrawal.
+6. Log out, and log back in to your User account.
+7. **Observe**:
+   - Your Available Balance is restored back to **$100.00**.
+   - In the Transactions list, the original withdrawal now has a red `FAILED` badge and is crossed out (struck-through).
+   - A new green `WITHDRAWAL_REFUND` transaction of `+$20.00` is visible, explicitly recovering the failed amount.
+   - The Withdrawal timer is completely gone, and the button is unlocked, allowing you to instantly withdraw again!
