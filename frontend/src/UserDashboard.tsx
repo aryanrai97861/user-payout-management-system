@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -10,6 +11,8 @@ export default function UserDashboard({ token }: { token: string }) {
   const [customerName, setCustomerName] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [message, setMessage] = useState('');
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [showWithdrawError, setShowWithdrawError] = useState(false);
 
   const authHeaders = {
     'Content-Type': 'application/json',
@@ -40,6 +43,31 @@ export default function UserDashboard({ token }: { token: string }) {
     fetchUserData();
   }, [token]);
 
+  useEffect(() => {
+    if (!userData?.lastWithdrawalAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const nextTime = new Date(userData.lastWithdrawalAt).getTime() + 24 * 60 * 60 * 1000;
+      const now = new Date().getTime();
+      const diff = nextTime - now;
+
+      if (diff <= 0) {
+        setTimeLeft(null);
+        clearInterval(interval);
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [userData?.lastWithdrawalAt]);
+
   const handleCreateSale = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('');
@@ -66,6 +94,10 @@ export default function UserDashboard({ token }: { token: string }) {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (timeLeft) {
+      setShowWithdrawError(true);
+      return;
+    }
     setMessage('');
     try {
       const res = await fetch(`${API_URL}/withdrawals`, {
@@ -146,7 +178,14 @@ export default function UserDashboard({ token }: { token: string }) {
         {/* WITHDRAW */}
         <div className="glass-dark rounded-3xl p-6 flex flex-col justify-between">
           <div>
-            <h3 className="text-xl font-bold text-fuchsia-100 mb-6">Request Withdrawal</h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-fuchsia-100">Request Withdrawal</h3>
+              {timeLeft && (
+                <span className="text-xs font-mono bg-red-950/50 text-red-300 px-2 py-1 rounded-md border border-red-900/50">
+                  Resets in: {timeLeft}
+                </span>
+              )}
+            </div>
             <form onSubmit={handleWithdraw} className="space-y-4">
               <div>
                 <label className="text-xs text-fuchsia-300 uppercase tracking-wide block mb-1">Amount ($)</label>
@@ -249,6 +288,27 @@ export default function UserDashboard({ token }: { token: string }) {
           </div>
         </div>
       </div>
+
+      {showWithdrawError && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 fade-in">
+          <div className="glass-dark p-8 rounded-3xl max-w-sm w-full border-red-900/50 text-center relative shadow-2xl shadow-red-900/20">
+            <div className="w-16 h-16 bg-red-950 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-900">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Withdrawal Locked</h3>
+            <p className="text-fuchsia-200/80 mb-6">
+              You can only withdraw funds once every 24 hours. Please wait until the timer expires.
+            </p>
+            <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-pink-500 mb-6 font-mono">
+              {timeLeft}
+            </div>
+            <button onClick={() => setShowWithdrawError(false)} className="w-full bg-red-950 hover:bg-red-900 text-red-200 font-bold py-3 rounded-xl transition-colors border border-red-800">
+              Understood
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
