@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .glass {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl;
+  }
+  .glass-dark {
+    @apply bg-black/50 backdrop-blur-xl border border-fuchsia-900/30 shadow-2xl;
+  }
+}
+
+body {
+  @apply bg-zinc-950 text-white antialiased min-h-screen font-sans;
+  background-image: radial-gradient(circle at 15% 50%, rgba(217, 70, 239, 0.12), transparent 30%),
+                    radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.12), transparent 30%);
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
