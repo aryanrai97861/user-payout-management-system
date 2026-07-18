@@ -9,6 +9,7 @@ export default function UserDashboard({ token }: { token: string }) {
   const [amount, setAmount] = useState('');
   const [productName, setProductName] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [brand, setBrand] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [message, setMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
@@ -75,13 +76,14 @@ export default function UserDashboard({ token }: { token: string }) {
       const res = await fetch(`${API_URL}/sales`, {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ amount, productName, customerName }),
+        body: JSON.stringify({ amount, productName, customerName, brand }),
       });
       const data = await res.json();
       if (res.ok) {
         setAmount('');
         setProductName('');
         setCustomerName('');
+        setBrand('');
         setMessage('Sale created successfully!');
         fetchUserData();
       } else {
@@ -166,6 +168,10 @@ export default function UserDashboard({ token }: { token: string }) {
               <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} required className="w-full bg-black/50 border border-fuchsia-900/30 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500" placeholder="e.g. John Doe" />
             </div>
             <div>
+              <label className="text-xs text-fuchsia-300 uppercase tracking-wide block mb-1">Brand</label>
+              <input type="text" value={brand} onChange={e => setBrand(e.target.value)} required className="w-full bg-black/50 border border-fuchsia-900/30 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500" placeholder="e.g. brand_1" />
+            </div>
+            <div>
               <label className="text-xs text-fuchsia-300 uppercase tracking-wide block mb-1">Amount ($)</label>
               <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full bg-black/50 border border-fuchsia-900/30 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500" placeholder="0.00" />
             </div>
@@ -219,7 +225,7 @@ export default function UserDashboard({ token }: { token: string }) {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <span className="font-bold text-white text-lg">${sale.amount.toFixed(2)}</span>
-                      <div className="text-xs text-fuchsia-300/70 mt-1">{sale.productName} • {sale.customerName}</div>
+                      <div className="text-xs text-fuchsia-300/70 mt-1">{sale.productName} • {sale.customerName} {sale.brand ? `• ${sale.brand}` : ''}</div>
                     </div>
                     <span className={`px-2 py-1 rounded-md text-xs font-bold ${
                       sale.status === 'APPROVED' ? 'bg-green-900/50 text-green-300' :
@@ -261,13 +267,25 @@ export default function UserDashboard({ token }: { token: string }) {
               <div className="text-fuchsia-300/50 text-center py-8">No transactions yet.</div>
             ) : (
               userData.transactions.map((tx: any) => {
-                const isNegative = tx.amount < 0 || tx.type === 'WITHDRAWAL';
+                const isNegative = tx.amount < 0 || (tx.type === 'WITHDRAWAL' && tx.status !== 'FAILED' && tx.status !== 'CANCELLED');
                 const isAdjustment = tx.type === 'ADJUSTMENT';
+                const isFailedWithdrawal = tx.type === 'WITHDRAWAL' && (tx.status === 'FAILED' || tx.status === 'CANCELLED');
+                const isRefund = tx.type === 'WITHDRAWAL_REFUND';
+                
                 return (
-                  <div key={tx.id} className={`p-4 rounded-2xl border ${isAdjustment ? 'bg-red-950/30 border-red-900/30' : 'bg-black/40 border-fuchsia-900/20'} flex justify-between items-center`}>
+                  <div key={tx.id} className={`p-4 rounded-2xl border ${isAdjustment || isFailedWithdrawal ? 'bg-red-950/30 border-red-900/30' : isRefund ? 'bg-green-950/30 border-green-900/30' : 'bg-black/40 border-fuchsia-900/20'} flex justify-between items-center`}>
                     <div>
-                      <div className={`font-bold ${isAdjustment ? 'text-red-300' : 'text-white'}`}>
+                      <div className={`font-bold ${isAdjustment || isFailedWithdrawal ? 'text-red-300' : isRefund ? 'text-green-300' : 'text-white'}`}>
                         {tx.type.replace('_', ' ')}
+                        {tx.type === 'WITHDRAWAL' && (
+                          <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                            tx.status === 'FAILED' ? 'bg-red-900/50 text-red-300' : 
+                            tx.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-300' : 
+                            'bg-green-900/50 text-green-300'
+                          }`}>
+                            {tx.status}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-fuchsia-300/60 mt-1">
                         {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}
@@ -277,8 +295,13 @@ export default function UserDashboard({ token }: { token: string }) {
                           Advance recovery charge
                         </div>
                       )}
+                      {isRefund && (
+                        <div className="text-xs text-green-400 mt-1 italic">
+                          Failed payout recovery
+                        </div>
+                      )}
                     </div>
-                    <div className={`font-black text-lg ${isNegative ? 'text-red-400' : 'text-green-400'}`}>
+                    <div className={`font-black text-lg ${isNegative ? 'text-red-400' : 'text-green-400'} ${isFailedWithdrawal ? 'line-through opacity-50' : ''}`}>
                       {isNegative ? '' : '+'}${Math.abs(tx.amount).toFixed(2)}
                     </div>
                   </div>

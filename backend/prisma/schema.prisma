@@ -25,6 +25,7 @@ model Sale {
   user         User          @relation(fields: [userId], references: [id])
   productName  String
   customerName String
+  brand        String?
   amount       Float
   status       String        @default("PENDING") // PENDING, APPROVED, REJECTED
   advancePaid  Boolean       @default(false)
@@ -40,6 +41,7 @@ model Transaction {
   saleId    String?
   sale      Sale?    @relation(fields: [saleId], references: [id])
   amount    Float
-  type      String   // ADVANCE_PAYOUT, FINAL_PAYOUT, ADJUSTMENT, WITHDRAWAL
+  type      String   // ADVANCE_PAYOUT, FINAL_PAYOUT, ADJUSTMENT, WITHDRAWAL, WITHDRAWAL_REFUND
+  status    String   @default("COMPLETED") // PENDING, COMPLETED, FAILED, CANCELLED
   createdAt DateTime @default(now())
 }

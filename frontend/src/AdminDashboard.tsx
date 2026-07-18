@@ -4,6 +4,7 @@ const API_URL = 'http://localhost:3000/api';
 
 export default function AdminDashboard({ token }: { token: string }) {
   const [sales, setSales] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
@@ -31,8 +32,21 @@ export default function AdminDashboard({ token }: { token: string }) {
     setLoading(false);
   };
 
+  const fetchWithdrawals = async () => {
+    try {
+      const res = await fetch(`${API_URL}/withdrawals`, { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        setWithdrawals(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchSales();
+    fetchWithdrawals();
   }, [token]);
 
 
@@ -45,11 +59,31 @@ export default function AdminDashboard({ token }: { token: string }) {
         headers: authHeaders,
         body: JSON.stringify({ status })
       });
+      const data = await res.json();
       if (res.ok) {
-        setMessage(`Sale ${status.toLowerCase()} successfully.`);
+        setMessage(data.message);
         fetchSales();
       } else {
-        const data = await res.json();
+        setMessage(`Error: ${data.error}`);
+      }
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
+    }
+  };
+
+  const handleWithdrawalStatus = async (transactionId: string, status: string) => {
+    setMessage('');
+    try {
+      const res = await fetch(`${API_URL}/withdrawals/${transactionId}/status`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(data.message);
+        fetchWithdrawals();
+      } else {
         setMessage(`Error: ${data.error}`);
       }
     } catch (e: any) {
@@ -134,6 +168,65 @@ export default function AdminDashboard({ token }: { token: string }) {
                   </tr>
                 ))
               )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* WITHDRAWALS MANAGEMENT */}
+      <div className="glass-dark rounded-3xl p-6 mt-8">
+        <h3 className="text-xl font-bold text-fuchsia-100 mb-6">Withdrawal Requests</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-fuchsia-900/30 text-fuchsia-300 text-sm">
+                <th className="pb-3 pr-4 font-semibold uppercase tracking-wider">Date</th>
+                <th className="pb-3 px-4 font-semibold uppercase tracking-wider">User</th>
+                <th className="pb-3 px-4 font-semibold uppercase tracking-wider">Amount</th>
+                <th className="pb-3 px-4 font-semibold uppercase tracking-wider">Status</th>
+                <th className="pb-3 pl-4 font-semibold uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {withdrawals.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-fuchsia-300/50">No withdrawals found.</td>
+                </tr>
+              ) : withdrawals.map((tx: any) => (
+                <tr key={tx.id} className="border-b border-fuchsia-900/10 hover:bg-white/5 transition-colors">
+                  <td className="py-4 pr-4 text-fuchsia-100 text-sm whitespace-nowrap">
+                    {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}
+                  </td>
+                  <td className="py-4 px-4 text-fuchsia-100">
+                    <div className="font-medium">{tx.user.name}</div>
+                    <div className="text-xs text-fuchsia-300/60">{tx.user.email}</div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="font-bold text-white text-lg">${Math.abs(tx.amount).toFixed(2)}</span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`px-2 py-1 rounded-md text-xs font-bold ${
+                      tx.status === 'COMPLETED' ? 'bg-green-900/50 text-green-300' :
+                      tx.status === 'FAILED' ? 'bg-red-900/50 text-red-300' :
+                      'bg-yellow-900/50 text-yellow-300'
+                    }`}>
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td className="py-4 pl-4 text-right">
+                    {tx.status === 'PENDING' && (
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => handleWithdrawalStatus(tx.id, 'COMPLETED')} className="bg-green-950 hover:bg-green-900 text-green-400 font-bold py-1.5 px-3 rounded-lg border border-green-800 text-xs transition-colors">
+                          Complete
+                        </button>
+                        <button onClick={() => handleWithdrawalStatus(tx.id, 'FAILED')} className="bg-red-950 hover:bg-red-900 text-red-400 font-bold py-1.5 px-3 rounded-lg border border-red-800 text-xs transition-colors">
+                          Fail
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

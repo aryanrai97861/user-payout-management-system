@@ -139,6 +139,27 @@ app.post('/api/users/reset-timer', verifyToken, async (req: AuthRequest, res) =>
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// WITHDRAWALS (Admin)
+app.get('/api/withdrawals', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      where: { type: 'WITHDRAWAL' },
+      include: { user: { select: { email: true, name: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(transactions);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
+
+app.post('/api/withdrawals/:id/status', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const result = await PayoutService.updateWithdrawalStatus(req.params.id, req.body.status);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

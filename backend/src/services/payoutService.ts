@@ -140,10 +140,54 @@ export class PayoutService {
           userId: user.id,
           amount: -amountToWithdraw, // Negative amount to represent outgoing
           type: 'WITHDRAWAL',
+          status: 'PENDING',
         },
       });
 
       return { message: "Withdrawal successful", amount: amountToWithdraw };
+    });
+  }
+
+  // 4. Update Withdrawal Status (Admin)
+  static async updateWithdrawalStatus(transactionId: string, newStatus: 'COMPLETED' | 'FAILED' | 'CANCELLED') {
+    return await prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.findUnique({ where: { id: transactionId } });
+      if (!transaction || transaction.type !== 'WITHDRAWAL') {
+        throw new Error("Withdrawal transaction not found");
+      }
+      if (transaction.status !== 'PENDING') {
+        throw new Error("Withdrawal is already processed");
+      }
+
+      // Update the transaction status
+      await tx.transaction.update({
+        where: { id: transactionId },
+        data: { status: newStatus },
+      });
+
+      // If failed or cancelled, refund the user and reset timer
+      if (newStatus === 'FAILED' || newStatus === 'CANCELLED') {
+        const refundAmount = Math.abs(transaction.amount); // amount was negative
+        
+        await tx.transaction.create({
+          data: {
+            userId: transaction.userId,
+            amount: refundAmount,
+            type: 'WITHDRAWAL_REFUND',
+            status: 'COMPLETED',
+          },
+        });
+
+        await tx.user.update({
+          where: { id: transaction.userId },
+          data: { 
+            balance: { increment: refundAmount },
+            lastWithdrawalAt: null // Reset the 24h lock so they can withdraw again
+          },
+        });
+      }
+
+      return { message: `Withdrawal marked as ${newStatus}` };
     });
   }
 }
